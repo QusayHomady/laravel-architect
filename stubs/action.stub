@@ -1,0 +1,18 @@
+<?php
+
+namespace {{ namespace }};
+
+use {{ serviceNamespace }};
+use {{ dtoNamespace }};
+
+class {{ class }}
+{
+    public function __construct(protected {{ service }} $service)
+    {
+    }
+
+    public function execute({{ dto }} $dto)
+    {
+        return $this->service->create($dto->toArray());
+    }
+}

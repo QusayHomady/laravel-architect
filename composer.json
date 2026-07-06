@@ -1,0 +1,24 @@
+{
+    "name": "qusaihomadi/laravel-architect",
+    "description": "Artisan generators for Action + Service + DTO + Repository pattern in Laravel",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "QusaiHomadi\\LaravelArchitect\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "QusaiHomadi\\LaravelArchitect\\GeneratorsServiceProvider"
+            ]
+        }
+    },
+    "require": {
+        "php": "^8.1",
+        "illuminate/support": "^9.0|^10.0|^11.0|^12.0"
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
