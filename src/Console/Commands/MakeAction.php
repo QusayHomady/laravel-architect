@@ -9,29 +9,56 @@ class MakeAction extends Command
 {
     use ResolvesStubs;
 
-    protected $signature = 'make:action {name : اسم الأكشن كامل, مثال: CreateUserAction}
-                            {--service= : اسم السيرفس المرتبط (افتراضياً مستخرج من الاسم)}
-                            {--dto= : اسم الـ DTO المرتبط (افتراضياً مستخرج من الاسم)}
-                            {--all : يولد معه أيضاً Repository + Service + DTO لنفس الكيان}
-                            {--force : استبدال الملفات لو موجودة}';
+    protected $signature = 'make:action {name : The full name of the action class, e.g., CreateUserAction}
+                            {--service= : The associated service class (defaults to matching the action entity)}
+                            {--dto= : The associated DTO class (defaults to matching the action entity)}
+                            {--all : Generate the Repository + Service + DTO for the entity as well}
+                            {--force : Overwrite the files if they already exist}';
 
-    protected $description = 'إنشاء Action Class (Single Action) يعتمد على Service و DTO (أضف --all لتوليد الوحدة كاملة)';
+    protected $description = 'Create a Single Action Class that depends on a Service and DTO (add --all to generate the complete module)';
 
     public function handle(): int
     {
         $rawName = $this->argument('name');
-        $actionClass = str_ends_with($rawName, 'Action') ? $rawName : "{$rawName}Action";
+        
+        // Standardize slashes to forward slashes first to make parsing easier
+        $normalizedName = str_replace('\\', '/', $rawName);
+        $parts = explode('/', $normalizedName);
+        $actionClassInput = array_pop($parts);
+        $subNamespace = count($parts) > 0 ? '\\' . implode('\\', $parts) : '';
+        $subPath = count($parts) > 0 ? '/' . implode('/', $parts) : '';
 
-        // استخراج اسم الكيان من مثل CreateUserAction => User
+        $actionClass = str_ends_with($actionClassInput, 'Action') ? $actionClassInput : "{$actionClassInput}Action";
+
+        // Extract entity name from action name: CreateUserAction -> User
         $base = str_replace('Action', '', $actionClass);
-        $entity = preg_replace('/^(Create|Update|Delete|Store|Find)/', '', $base) ?: $base;
+        $entityName = preg_replace('/^(Create|Update|Delete|Store|Find)/', '', $base) ?: $base;
 
-        $serviceClass = $this->option('service') ?: "{$entity}Service";
-        $dtoClass = $this->option('dto') ?: "{$entity}DTO";
+        $serviceOption = $this->option('service');
+        if ($serviceOption) {
+            $cleanService = str_replace('/', '\\', str_replace('\\', '/', $serviceOption));
+            $serviceParts = explode('\\', $cleanService);
+            $serviceClass = array_pop($serviceParts);
+            $serviceSubNamespace = count($serviceParts) > 0 ? '\\' . implode('\\', $serviceParts) : $subNamespace;
+        } else {
+            $serviceClass = "{$entityName}Service";
+            $serviceSubNamespace = $subNamespace;
+        }
 
-        $namespace = config('laravel-architect.action.namespace', 'App\\Actions');
-        $serviceNamespace = config('laravel-architect.service.namespace', 'App\\Services') . "\\{$serviceClass}";
-        $dtoNamespace = config('laravel-architect.dto.namespace', 'App\\DTOs') . "\\{$dtoClass}";
+        $dtoOption = $this->option('dto');
+        if ($dtoOption) {
+            $cleanDto = str_replace('/', '\\', str_replace('\\', '/', $dtoOption));
+            $dtoParts = explode('\\', $cleanDto);
+            $dtoClass = array_pop($dtoParts);
+            $dtoSubNamespace = count($dtoParts) > 0 ? '\\' . implode('\\', $dtoParts) : $subNamespace;
+        } else {
+            $dtoClass = "{$entityName}DTO";
+            $dtoSubNamespace = $subNamespace;
+        }
+
+        $namespace = config('laravel-architect.action.namespace', 'App\\Actions') . $subNamespace;
+        $serviceNamespace = config('laravel-architect.service.namespace', 'App\\Services') . $serviceSubNamespace . "\\{$serviceClass}";
+        $dtoNamespace = config('laravel-architect.dto.namespace', 'App\\DTOs') . $dtoSubNamespace . "\\{$dtoClass}";
 
         $content = $this->buildFromStub('action', [
             'namespace' => $namespace,
@@ -43,23 +70,23 @@ class MakeAction extends Command
         ]);
 
         $this->writeFile(
-            config('laravel-architect.action.path', app_path('Actions')) . "/{$actionClass}.php",
+            config('laravel-architect.action.path', app_path('Actions')) . "{$subPath}/{$actionClass}.php",
             $content
         );
 
         if ($this->option('all')) {
             $this->newLine();
             $this->call('make:repository', [
-                'name' => $entity,
+                'name' => $subPath ? trim($subPath, '/') . "/{$entityName}" : $entityName,
                 '--force' => $this->option('force'),
             ]);
             $this->call('make:service', [
-                'name' => $entity,
-                '--repository' => $entity,
+                'name' => $subPath ? trim($subPath, '/') . "/{$entityName}" : $entityName,
+                '--repository' => $subPath ? trim($subPath, '/') . "/{$entityName}" : $entityName,
                 '--force' => $this->option('force'),
             ]);
             $this->call('make:dto', [
-                'name' => $entity,
+                'name' => $subPath ? trim($subPath, '/') . "/{$entityName}" : $entityName,
                 '--force' => $this->option('force'),
             ]);
         }

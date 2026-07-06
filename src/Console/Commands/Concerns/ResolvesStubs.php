@@ -5,8 +5,8 @@ namespace QusaiHomadi\LaravelArchitect\Console\Commands\Concerns;
 trait ResolvesStubs
 {
     /**
-     * يرجع مسار الـ stub: أول شي يدور بمسار المشروع (لو المستخدم عمل publish وعدّل عليه)
-     * ولو ما لقاه يرجع للـ stub الأساسي بالباكج.
+     * Get the stub file path: checks the project directory first (if published and customized),
+     * and falls back to the default package stubs.
      */
     protected function getStub(string $name): string
     {
@@ -41,11 +41,11 @@ trait ResolvesStubs
         $force = method_exists($this, 'option') && $this->option('force');
 
         if (file_exists($path) && !$force) {
-            $this->warn("الملف موجود مسبقاً (استخدم --force للاستبدال): {$path}");
+            $this->warn("File already exists (use --force to overwrite): {$path}");
             return;
         }
 
         file_put_contents($path, $content);
-        $this->info("✔ تم إنشاء: {$path}");
+        $this->info("✔ Created: {$path}");
     }
 }

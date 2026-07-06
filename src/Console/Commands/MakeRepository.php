@@ -9,73 +9,84 @@ class MakeRepository extends Command
 {
     use ResolvesStubs;
 
-    protected $signature = 'make:repository {name : اسم الريبوزيتوري, مثال: User أو UserRepository}
-                            {--model= : اسم الموديل المرتبط (افتراضياً نفس name)}
-                            {--all : يولد معه أيضاً Service + DTO + Action لنفس الكيان}
-                            {--force : استبدال الملفات لو موجودة}';
+    protected $signature = 'make:repository {name : The name of the repository, e.g., User or UserRepository}
+                            {--model= : The name of the associated Eloquent model (defaults to matching the repository name)}
+                            {--all : Generate the Service + DTO + Action for the entity as well}
+                            {--force : Overwrite the files if they already exist}';
 
-    protected $description = 'إنشاء Repository + Interface الخاص فيه (أضف --all لتوليد الوحدة كاملة)';
+    protected $description = 'Create a Repository class and its Interface (add --all to generate the complete module)';
 
     public function handle(): int
     {
-        $name = $this->cleanName($this->argument('name'));
-        $model = $this->option('model') ?: $name;
+        $cleanName = $this->cleanName($this->argument('name'));
+        $normalizedName = str_replace('\\', '/', $cleanName);
+        $parts = explode('/', $normalizedName);
+        $entityName = array_pop($parts);
+        $subNamespace = count($parts) > 0 ? '\\' . implode('\\', $parts) : '';
+        $subPath = count($parts) > 0 ? '/' . implode('/', $parts) : '';
 
-        $namespace = config('laravel-architect.repository.namespace', 'App\\Repositories');
-        $interfaceNamespace = config('laravel-architect.repository.interface_namespace', 'App\\Repositories\\Contracts');
+        // For model, if it has slashes, convert to backslashes
+        $modelOption = $this->option('model');
+        if ($modelOption) {
+            $model = str_replace('/', '\\', $modelOption);
+        } else {
+            $model = $subNamespace ? trim($subNamespace, '\\') . '\\' . $entityName : $entityName;
+        }
+
+        $namespace = config('laravel-architect.repository.namespace', 'App\\Repositories') . $subNamespace;
+        $interfaceNamespace = config('laravel-architect.repository.interface_namespace', 'App\\Repositories\\Contracts') . $subNamespace;
         $interfaceSuffix = config('laravel-architect.repository.interface_suffix', 'RepositoryInterface');
         $modelNamespace = config('laravel-architect.model.namespace', 'App\\Models') . "\\{$model}";
 
-        $interfaceClass = "{$name}{$interfaceSuffix}";
-        $repositoryClass = "{$name}Repository";
+        $interfaceClass = "{$entityName}{$interfaceSuffix}";
+        $repositoryClass = "{$entityName}Repository";
 
-        // 1) الواجهة (Interface)
+        // 1) Interface
         $interfaceContent = $this->buildFromStub('repository.interface', [
             'namespace' => $interfaceNamespace,
             'interface' => $interfaceClass,
         ]);
 
         $this->writeFile(
-            config('laravel-architect.repository.interface_path', app_path('Repositories/Contracts')) . "/{$interfaceClass}.php",
+            config('laravel-architect.repository.interface_path', app_path('Repositories/Contracts')) . "{$subPath}/{$interfaceClass}.php",
             $interfaceContent
         );
 
-        // 2) التنفيذ (Repository)
+        // 2) Repository
         $repositoryContent = $this->buildFromStub('repository', [
             'namespace' => $namespace,
             'class' => $repositoryClass,
             'interface' => $interfaceClass,
-            'model' => $model,
+            'model' => basename(str_replace('\\', '/', $model)),
             'modelNamespace' => $modelNamespace,
             'interfaceNamespace' => "{$interfaceNamespace}\\{$interfaceClass}",
         ]);
 
         $this->writeFile(
-            config('laravel-architect.repository.path', app_path('Repositories')) . "/{$repositoryClass}.php",
+            config('laravel-architect.repository.path', app_path('Repositories')) . "{$subPath}/{$repositoryClass}.php",
             $repositoryContent
         );
 
         if (config('laravel-architect.repository.auto_bind', true)) {
-            $this->comment("لا تنسَ ربط الـ Interface بالـ Repository في AppServiceProvider:");
+            $this->comment("Don't forget to bind the Interface to the Repository in AppServiceProvider:");
             $this->line("\$this->app->bind(\\{$interfaceNamespace}\\{$interfaceClass}::class, \\{$namespace}\\{$repositoryClass}::class);");
         }
 
-        // --all: نكمّل توليد باقي الطبقات لنفس الكيان
+        // --all: generate rest of layers
         if ($this->option('all')) {
             $this->newLine();
             $this->call('make:service', [
-                'name' => $name,
-                '--repository' => $name,
+                'name' => $cleanName,
                 '--force' => $this->option('force'),
             ]);
             $this->call('make:dto', [
-                'name' => $name,
+                'name' => $cleanName,
                 '--force' => $this->option('force'),
             ]);
             $this->call('make:action', [
-                'name' => "Create{$name}Action",
-                '--service' => "{$name}Service",
-                '--dto' => "{$name}DTO",
+                'name' => $subPath ? trim($subPath, '/') . "/Create{$entityName}Action" : "Create{$entityName}Action",
+                '--service' => "{$cleanName}Service",
+                '--dto' => "{$cleanName}DTO",
                 '--force' => $this->option('force'),
             ]);
         }

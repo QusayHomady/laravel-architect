@@ -9,18 +9,23 @@ class MakeDTO extends Command
 {
     use ResolvesStubs;
 
-    protected $signature = 'make:dto {name : اسم الـ DTO, مثال: User أو UserDTO}
-                            {--all : يولد معه أيضاً Repository + Service + Action لنفس الكيان}
-                            {--force : استبدال الملفات لو موجودة}';
+    protected $signature = 'make:dto {name : The name of the DTO, e.g., User or UserDTO}
+                            {--all : Generate the Repository + Service + Action for the entity as well}
+                            {--force : Overwrite the files if they already exist}';
 
-    protected $description = 'إنشاء DTO Class بسيط (أضف --all لتوليد الوحدة كاملة)';
+    protected $description = 'Create a simple DTO Class (add --all to generate the complete module)';
 
     public function handle(): int
     {
-        $name = $this->cleanName($this->argument('name'));
-        $dtoClass = "{$name}DTO";
+        $cleanName = $this->cleanName($this->argument('name'));
+        $normalizedName = str_replace('\\', '/', $cleanName);
+        $parts = explode('/', $normalizedName);
+        $entityName = array_pop($parts);
+        $subNamespace = count($parts) > 0 ? '\\' . implode('\\', $parts) : '';
+        $subPath = count($parts) > 0 ? '/' . implode('/', $parts) : '';
 
-        $namespace = config('laravel-architect.dto.namespace', 'App\\DTOs');
+        $dtoClass = "{$entityName}DTO";
+        $namespace = config('laravel-architect.dto.namespace', 'App\\DTOs') . $subNamespace;
 
         $content = $this->buildFromStub('dto', [
             'namespace' => $namespace,
@@ -28,25 +33,25 @@ class MakeDTO extends Command
         ]);
 
         $this->writeFile(
-            config('laravel-architect.dto.path', app_path('DTOs')) . "/{$dtoClass}.php",
+            config('laravel-architect.dto.path', app_path('DTOs')) . "{$subPath}/{$dtoClass}.php",
             $content
         );
 
         if ($this->option('all')) {
             $this->newLine();
             $this->call('make:repository', [
-                'name' => $name,
+                'name' => $cleanName,
                 '--force' => $this->option('force'),
             ]);
             $this->call('make:service', [
-                'name' => $name,
-                '--repository' => $name,
+                'name' => $cleanName,
+                '--repository' => $cleanName,
                 '--force' => $this->option('force'),
             ]);
             $this->call('make:action', [
-                'name' => "Create{$name}Action",
-                '--service' => "{$name}Service",
-                '--dto' => $dtoClass,
+                'name' => $subPath ? trim($subPath, '/') . "/Create{$entityName}Action" : "Create{$entityName}Action",
+                '--service' => "{$cleanName}Service",
+                '--dto' => "{$cleanName}DTO",
                 '--force' => $this->option('force'),
             ]);
         }

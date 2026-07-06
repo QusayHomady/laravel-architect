@@ -6,17 +6,17 @@ use Illuminate\Console\Command;
 
 class MakeModule extends Command
 {
-    protected $signature = 'make:module {name : اسم الكيان, مثال: User}
-                            {--force : استبدال الملفات لو موجودة}';
+    protected $signature = 'make:module {name : The name of the entity, e.g., User}
+                            {--force : Overwrite the files if they already exist}';
 
-    protected $description = 'يولد دفعة وحدة كاملة: Repository + Service + DTO + Action لكيان واحد بأمر وحد (بديل لاستخدام --all)';
+    protected $description = 'Generate a complete module (Repository + Service + DTO + Action) for an entity in one command';
 
     public function handle(): int
     {
         $name = $this->argument('name');
         $force = $this->option('force');
 
-        $this->info("جاري إنشاء الوحدة الكاملة لـ: {$name}");
+        $this->info("Generating complete module for: {$name}");
         $this->newLine();
 
         $this->call('make:repository', ['name' => $name, '--force' => $force]);
@@ -28,16 +28,21 @@ class MakeModule extends Command
         $this->call('make:dto', ['name' => $name, '--force' => $force]);
         $this->newLine();
 
+        $normalizedName = str_replace('\\', '/', $name);
+        $parts = explode('/', $normalizedName);
+        $entityName = array_pop($parts);
+        $subPath = count($parts) > 0 ? implode('/', $parts) . '/' : '';
+
         $this->call('make:action', [
-            'name' => "Create{$name}Action",
-            '--service' => "{$name}Service",
-            '--dto' => "{$name}DTO",
+            'name' => "{$subPath}Create{$entityName}Action",
+            '--service' => "{$subPath}{$entityName}Service",
+            '--dto' => "{$subPath}{$entityName}DTO",
             '--force' => $force,
         ]);
 
         $this->newLine();
-        $this->info("تم! تحقق من مجلدات app/Repositories, app/Services, app/DTOs, app/Actions");
-        $this->comment("لا تنسَ ربط الـ Repository Interface بالـ Repository في AppServiceProvider أو RepositoryServiceProvider.");
+        $this->info("Done! Check app/Repositories, app/Services, app/DTOs, and app/Actions directories.");
+        $this->comment("Don't forget to bind the Repository Interface to the Repository implementation in AppServiceProvider or RepositoryServiceProvider.");
 
         return self::SUCCESS;
     }

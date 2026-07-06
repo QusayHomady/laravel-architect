@@ -22,12 +22,12 @@ class GeneratorsServiceProvider extends ServiceProvider
                 MakeModule::class,
             ]);
 
-            // نشر ملفات الـ stubs عشان تقدر تعدلها حسب ستايل مشروعك
+            // Publish stubs for customization
             $this->publishes([
                 __DIR__ . '/../stubs' => base_path('stubs/vendor/laravel-architect'),
             ], 'laravel-architect-stubs');
 
-            // نشر ملف الإعدادات عشان تتحكم بالمسارات والـ namespaces
+            // Publish configuration file
             $this->publishes([
                 __DIR__ . '/../config/laravel-architect.php' => config_path('laravel-architect.php'),
             ], 'laravel-architect-config');

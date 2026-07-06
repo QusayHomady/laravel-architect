@@ -5,8 +5,8 @@ namespace {{ namespace }};
 class {{ class }}
 {
     public function __construct(
-        // عرّف هنا خصائص الـ DTO حسب البيانات اللي تحتاجها
-        // مثال: public readonly string $name, public readonly string $email
+        // Define DTO properties here based on the data you need
+        // Example: public readonly string $name, public readonly string $email
     ) {
     }
 

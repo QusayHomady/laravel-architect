@@ -9,23 +9,39 @@ class MakeService extends Command
 {
     use ResolvesStubs;
 
-    protected $signature = 'make:service {name : اسم السيرفس, مثال: User أو UserService}
-                            {--repository= : اسم الـ Repository Interface المرتبط (افتراضياً نفس name)}
-                            {--all : يولد معه أيضاً Repository + DTO + Action لنفس الكيان}
-                            {--force : استبدال الملفات لو موجودة}';
+    protected $signature = 'make:service {name : The name of the service, e.g., User or UserService}
+                            {--repository= : The associated Repository Interface name (defaults to matching the service name)}
+                            {--all : Generate the Repository + DTO + Action for the entity as well}
+                            {--force : Overwrite the files if they already exist}';
 
-    protected $description = 'إنشاء Service Class يعتمد على Repository Interface (أضف --all لتوليد الوحدة كاملة)';
+    protected $description = 'Create a Service Class that depends on a Repository Interface (add --all to generate the complete module)';
 
     public function handle(): int
     {
-        $name = $this->cleanName($this->argument('name'));
-        $repositoryBase = $this->option('repository') ?: $name;
+        $cleanName = $this->cleanName($this->argument('name'));
+        $normalizedName = str_replace('\\', '/', $cleanName);
+        $parts = explode('/', $normalizedName);
+        $entityName = array_pop($parts);
+        $subNamespace = count($parts) > 0 ? '\\' . implode('\\', $parts) : '';
+        $subPath = count($parts) > 0 ? '/' . implode('/', $parts) : '';
 
-        $namespace = config('laravel-architect.service.namespace', 'App\\Services');
-        $repositoryInterfaceNamespace = config('laravel-architect.repository.interface_namespace', 'App\\Repositories\\Contracts');
+        $repositoryBaseOption = $this->option('repository');
+        if ($repositoryBaseOption) {
+            $cleanRepo = $this->cleanName($repositoryBaseOption);
+            $normalizedRepo = str_replace('\\', '/', $cleanRepo);
+            $repoParts = explode('/', $normalizedRepo);
+            $repoEntity = array_pop($repoParts);
+            $repoSubNamespace = count($repoParts) > 0 ? '\\' . implode('\\', $repoParts) : '';
+        } else {
+            $repoEntity = $entityName;
+            $repoSubNamespace = $subNamespace;
+        }
+
+        $namespace = config('laravel-architect.service.namespace', 'App\\Services') . $subNamespace;
+        $repositoryInterfaceNamespace = config('laravel-architect.repository.interface_namespace', 'App\\Repositories\\Contracts') . $repoSubNamespace;
         $interfaceSuffix = config('laravel-architect.repository.interface_suffix', 'RepositoryInterface');
-        $repositoryInterface = "{$repositoryBase}{$interfaceSuffix}";
-        $serviceClass = "{$name}Service";
+        $repositoryInterface = "{$repoEntity}{$interfaceSuffix}";
+        $serviceClass = "{$entityName}Service";
 
         $content = $this->buildFromStub('service', [
             'namespace' => $namespace,
@@ -35,24 +51,24 @@ class MakeService extends Command
         ]);
 
         $this->writeFile(
-            config('laravel-architect.service.path', app_path('Services')) . "/{$serviceClass}.php",
+            config('laravel-architect.service.path', app_path('Services')) . "{$subPath}/{$serviceClass}.php",
             $content
         );
 
         if ($this->option('all')) {
             $this->newLine();
             $this->call('make:repository', [
-                'name' => $name,
+                'name' => $cleanName,
                 '--force' => $this->option('force'),
             ]);
             $this->call('make:dto', [
-                'name' => $name,
+                'name' => $cleanName,
                 '--force' => $this->option('force'),
             ]);
             $this->call('make:action', [
-                'name' => "Create{$name}Action",
+                'name' => $subPath ? trim($subPath, '/') . "/Create{$entityName}Action" : "Create{$entityName}Action",
                 '--service' => $serviceClass,
-                '--dto' => "{$name}DTO",
+                '--dto' => "{$entityName}DTO",
                 '--force' => $this->option('force'),
             ]);
         }

@@ -4,9 +4,9 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | المسارات والـ Namespaces
+    | Namespaces and Paths
     |--------------------------------------------------------------------------
-    | تقدر تغيّر أي مسار / namespace حسب هيكلة مشروعك.
+    | You can customize namespaces and folder paths according to your project structure.
     | */
 
     'repository' => [
@@ -15,7 +15,7 @@ return [
         'interface_namespace' => 'App\\Repositories\\Contracts',
         'interface_path' => app_path('Repositories/Contracts'),
         'interface_suffix' => 'RepositoryInterface',
-        // لو حاب يوصل تلقائي بالـ AppServiceProvider أثناء التوليد
+        // Enable/disable binding suggestions during generation
         'auto_bind' => true,
     ],
 
