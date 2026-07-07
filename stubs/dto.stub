@@ -2,23 +2,18 @@
 
 namespace {{ namespace }};
 
+{{ imports }}
+/**
+ * DTO generated from {{ modelClass }}
+ *
+ * Regenerate with: php artisan make:dto {{ modelName }} --force
+ */
 class {{ class }}
 {
     public function __construct(
-        // Define DTO properties here based on the data you need
-        // Example: public readonly string $name, public readonly string $email
+{{ properties }}
     ) {
     }
 
-    public static function fromArray(array $data): self
-    {
-        return new self(
-            // ...$data['name'], $data['email']
-        );
-    }
-
-    public function toArray(): array
-    {
-        return get_object_vars($this);
-    }
+{{ methods }}
 }

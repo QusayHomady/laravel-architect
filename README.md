@@ -143,3 +143,39 @@ public function register(): void
 
 كل الملفات المولّدة هي نقطة بداية بسيطة (CRUD أساسي). عدّل الـ stubs الموجودة في مجلد `stubs/`
 (أو بعد النشر في `stubs/vendor/laravel-architect/`) لتضيف منطقك الخاص، Validation، Events، إلخ.
+
+---
+
+## Dynamic DTO Generation (توليد الـ DTO التلقائي من الموديل)
+
+تم دمج محرك توليد DTO متقدم وذكي جداً! عند تشغيل أمر توليد الـ DTO:
+```bash
+php artisan make:dto User
+```
+سيبحث المولد تلقائياً عن موديل `User` في مشروعك، ويقوم بـ:
+1. قراءة الحقول المعرفة في مصفوفة `$fillable` داخل الموديل.
+2. استنتاج أنواع الحقول (Types) تلقائياً بناءً على مصفوفة الـ `$casts` (مثل `boolean` -> `bool`, `datetime` -> `Carbon`, إلخ).
+3. تحويل أسماء الحقول لـ `camelCase` كخصائص للقراءة فقط (Readonly Properties).
+4. إنشاء دوال مساعدة تلقائياً للتحويل والتوليد:
+   - `fromModel()`
+   - `fromArray()`
+   - `fromRequest()`
+   - `toArray()`
+
+> [!NOTE]
+> إذا لم يتم العثور على الموديل في مشروعك، لا تقلق! سيقوم المولد تلقائياً بالتراجع (Fallback) وإنشاء كلاس DTO افتراضي فارغ وبسيط لتتمكن من تعبئته بنفسك.
+
+### خيارات التحكم بالـ DTO في ملف الإعدادات:
+في ملف `config/laravel-architect.php` يمكنك تفعيل أو إلغاء تفعيل الميزات الإضافية للـ DTO:
+```php
+    'dto' => [
+        'namespace' => 'App\\DTOs',
+        'path' => app_path('DTOs'),
+        'readonly' => true, // استخدام readonly للمتغيرات (PHP 8.1+)
+        'generate_from_model' => true, // توليد دالة fromModel
+        'generate_from_array' => true, // توليد دالة fromArray
+        'generate_from_request' => true, // توليد دالة fromRequest
+        'generate_to_array' => true, // توليد دالة toArray
+    ],
+```
+

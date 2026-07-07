@@ -27,6 +27,11 @@ return [
     'dto' => [
         'namespace' => 'App\\DTOs',
         'path' => app_path('DTOs'),
+        'readonly' => true,
+        'generate_from_model' => true,
+        'generate_from_array' => true,
+        'generate_from_request' => true,
+        'generate_to_array' => true,
     ],
 
     'action' => [
