@@ -43,15 +43,12 @@ class MakeRepository extends Command
         $interfaceClass = "{$entityName}{$interfaceSuffix}";
         $repositoryClass = "{$entityName}Repository";
 
-        // Prompt user for pattern type if running interactively
-        $patternType = 'Interface';
-        if ($this->input->isInteractive()) {
-            $patternType = $this->choice(
-                'Which repository pattern structure do you want to use?',
-                ['Interface', 'Abstract Class'],
-                0
-            );
-        }
+        // Prompt user for pattern type
+        $patternType = $this->choice(
+            'Which repository pattern structure do you want to use?',
+            ['Interface', 'Abstract Class'],
+            0
+        );
 
         if ($patternType === 'Interface') {
             $relation = 'implements';
