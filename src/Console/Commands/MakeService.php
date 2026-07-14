@@ -32,22 +32,36 @@ class MakeService extends Command
             $repoParts = explode('/', $normalizedRepo);
             $repoEntity = array_pop($repoParts);
             $repoSubNamespace = count($repoParts) > 0 ? '\\' . implode('\\', $repoParts) : '';
+            $repoSubPath = count($repoParts) > 0 ? '/' . implode('/', $repoParts) : '';
         } else {
             $repoEntity = $entityName;
             $repoSubNamespace = $subNamespace;
+            $repoSubPath = $subPath;
         }
 
         $namespace = config('laravel-architect.service.namespace', 'App\\Services') . $subNamespace;
         $repositoryInterfaceNamespace = config('laravel-architect.repository.interface_namespace', 'App\\Repositories\\Contracts') . $repoSubNamespace;
+        
         $interfaceSuffix = config('laravel-architect.repository.interface_suffix', 'RepositoryInterface');
-        $repositoryInterface = "{$repoEntity}{$interfaceSuffix}";
+        $interfacePath = config('laravel-architect.repository.interface_path', app_path('Repositories/Contracts')) . "{$repoSubPath}/";
+
+        $abstractName = "Abstract{$repoEntity}Repository";
+        $interfaceName = "{$repoEntity}{$interfaceSuffix}";
+
+        // Safely detect if Abstract repository class was generated, fallback to standard Interface name
+        if (file_exists($interfacePath . $abstractName . '.php')) {
+            $repositoryParent = $abstractName;
+        } else {
+            $repositoryParent = $interfaceName;
+        }
+
         $serviceClass = "{$entityName}Service";
 
         $content = $this->buildFromStub('service', [
             'namespace' => $namespace,
             'class' => $serviceClass,
-            'repositoryInterface' => $repositoryInterface,
-            'repositoryInterfaceNamespace' => "{$repositoryInterfaceNamespace}\\{$repositoryInterface}",
+            'repositoryInterface' => $repositoryParent,
+            'repositoryInterfaceNamespace' => "{$repositoryInterfaceNamespace}\\{$repositoryParent}",
         ]);
 
         $this->writeFile(

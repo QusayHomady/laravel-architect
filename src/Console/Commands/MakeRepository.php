@@ -16,6 +16,8 @@ class MakeRepository extends Command
 
     protected $description = 'Create a Repository class and its Interface (add --all to generate the complete module)';
 
+    protected $aliases = ['make:repo', 'make:rep'];
+
     public function handle(): int
     {
         $cleanName = $this->cleanName($this->argument('name'));
@@ -41,25 +43,63 @@ class MakeRepository extends Command
         $interfaceClass = "{$entityName}{$interfaceSuffix}";
         $repositoryClass = "{$entityName}Repository";
 
-        // 1) Interface
-        $interfaceContent = $this->buildFromStub('repository.interface', [
-            'namespace' => $interfaceNamespace,
-            'interface' => $interfaceClass,
-        ]);
+        // Prompt user for pattern type if running interactively
+        $patternType = 'Interface';
+        if ($this->input->isInteractive()) {
+            $patternType = $this->choice(
+                'Which repository pattern structure do you want to use?',
+                ['Interface', 'Abstract Class'],
+                0
+            );
+        }
 
-        $this->writeFile(
-            config('laravel-architect.repository.interface_path', app_path('Repositories/Contracts')) . "{$subPath}/{$interfaceClass}.php",
-            $interfaceContent
-        );
+        if ($patternType === 'Interface') {
+            $relation = 'implements';
+            $parentClass = $interfaceClass;
+            $parentNamespace = "{$interfaceNamespace}\\{$interfaceClass}";
 
-        // 2) Repository
+            // 1) Interface
+            $importsContent = "use Illuminate\Container\Attributes\Bind;\nuse {$namespace}\\{$repositoryClass};";
+            $attributesContent = "#[Bind({$repositoryClass}::class)]\n";
+
+            $interfaceContent = $this->buildFromStub('repository.interface', [
+                'namespace' => $interfaceNamespace,
+                'interface' => $interfaceClass,
+                'imports' => $importsContent,
+                'attributes' => $attributesContent,
+            ]);
+
+            $this->writeFile(
+                config('laravel-architect.repository.interface_path', app_path('Repositories/Contracts')) . "{$subPath}/{$interfaceClass}.php",
+                $interfaceContent
+            );
+        } else {
+            $abstractClass = "Abstract{$entityName}Repository";
+            $relation = 'extends';
+            $parentClass = $abstractClass;
+            $parentNamespace = "{$interfaceNamespace}\\{$abstractClass}";
+
+            // 1) Abstract class
+            $abstractContent = $this->buildFromStub('repository.abstract', [
+                'namespace' => $interfaceNamespace,
+                'class' => $abstractClass,
+            ]);
+
+            $this->writeFile(
+                config('laravel-architect.repository.interface_path', app_path('Repositories/Contracts')) . "{$subPath}/{$abstractClass}.php",
+                $abstractContent
+            );
+        }
+
+        // 2) Concrete Repository
         $repositoryContent = $this->buildFromStub('repository', [
             'namespace' => $namespace,
             'class' => $repositoryClass,
-            'interface' => $interfaceClass,
+            'relation' => $relation,
+            'interface' => $parentClass,
             'model' => basename(str_replace('\\', '/', $model)),
             'modelNamespace' => $modelNamespace,
-            'interfaceNamespace' => "{$interfaceNamespace}\\{$interfaceClass}",
+            'interfaceNamespace' => $parentNamespace,
         ]);
 
         $this->writeFile(
@@ -67,9 +107,12 @@ class MakeRepository extends Command
             $repositoryContent
         );
 
-        if (config('laravel-architect.repository.auto_bind', true)) {
-            $this->comment("Don't forget to bind the Interface to the Repository in AppServiceProvider:");
-            $this->line("\$this->app->bind(\\{$interfaceNamespace}\\{$interfaceClass}::class, \\{$namespace}\\{$repositoryClass}::class);");
+        if ($relation === 'implements') {
+            $this->info("Attribute #[Bind] is placed on the interface. Automatic resolution is active in Laravel 11.");
+            if (config('laravel-architect.repository.auto_bind', true)) {
+                $this->comment("If you prefer manual binding, you can add this to AppServiceProvider:");
+                $this->line("\$this->app->bind(\\{$interfaceNamespace}\\{$interfaceClass}::class, \\{$namespace}\\{$repositoryClass}::class);");
+            }
         }
 
         // --all: generate rest of layers

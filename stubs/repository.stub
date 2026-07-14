@@ -5,7 +5,7 @@ namespace {{ namespace }};
 use {{ modelNamespace }};
 use {{ interfaceNamespace }};
 
-class {{ class }} implements {{ interface }}
+class {{ class }} {{ relation }} {{ interface }}
 {
     public function __construct(protected {{ model }} $model)
     {
